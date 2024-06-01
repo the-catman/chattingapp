@@ -1,0 +1,31 @@
+{
+	"hashedPassword": "5ba7cc281833c08df0c954b6c3bc877de03547c46a379cf459189c23ee5a2e686d67f7bd11bd99ab952b9b31ccd09830f5f4e2aea9f3c5bc46283e86010e5fec",
+	"salt": "pbR3eyBnykGUm6eeVnXxX1icKlcl4segI54z3WtoMJvbjGAC2Wdq3TQndHvCIoEnsyjvS0zVWRIIVaxsz0qlUxHlqvqcLXCvUprbdkR1lvEfhItfOchf5MOtVAluwFfwcu5Jz0DaYyDQNFWAVpNsOI44j2qClI3i",
+	"logDebug": true,
+	"noSameIP": true,
+	"maxConnections": 5,
+	"complaints": [
+		"The packet type it received was unknown!"
+	],
+    "keyDir": "../httpsserver/privkey.pem",
+    "certDir": "../httpsserver/fullchain.pem",
+    "clientDir": "./client.html",
+    "useHTTPS": true,
+
+    "maxPayload": 1000000000,
+    "perMessageDeflate": {
+        "zlibDeflateOptions": {
+            "chunkSize": 1024,
+            "memLevel": 8,
+            "level": 9
+        },
+        "zlibInflateOptions": {
+            "chunkSize": 10240
+        },
+        "clientNoContextTakeover": true,
+        "serverNoContextTakeover": true,
+        "serverMaxWindowBits": 10,
+        "concurrencyLimit": 10,
+        "threshold": 1024
+    }
+}
