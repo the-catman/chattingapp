@@ -15,8 +15,7 @@ Refer to [config.json](./config.json) for configuration.
 Run the following command to set the password:
 
 ```bash
-$ npm run password
-Enter new password:
+npm run password
 ```
 
 The terminal will automatically clear the password once inputted.
