@@ -141,11 +141,12 @@
                 return;
             }
 
-            ws = new WebSocket("wss://" + location.host);
+            ws = new WebSocket(window.location.protocol.replace("http", "ws") + "//" + location.host);
             statusTxt.textContent = 'Status: Attempting connection...';
 
             ws.onclose = function (closeEvent) {
                 statusTxt.textContent = 'Status: Disconnected, reason: ' + (closeEvent.reason || "None.");
+                console.log(closeEvent);
                 setTimeout(connect, 5000);
             }
 

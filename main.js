@@ -1,13 +1,15 @@
-const https = require("https");
-const http = require("http");
 const WebSocket = require("ws");
+
+const http = require("http");
+const https = require("https");
 const { readFileSync } = require("fs");
 const { createHash } = require('crypto');
+
 const config = require("./config.json");
 
 function callBack(req, res) {
     res.writeHead(200);
-    res.end(readFileSync(config.clientDir, { encoding: 'utf-8' }));
+    res.end(readFileSync(config.client, { encoding: 'utf-8' }));
 }
 
 const serveerSSLSettings = {
@@ -19,18 +21,7 @@ const server = config.useHTTPS ? (https.createServer(serveerSSLSettings, callBac
 
 const wss = new WebSocket.Server({
     server,
-    maxPayload: config.maxPayload,
-    perMessageDeflate: config.perMessageDeflate,
-    verifyClient: function (info) {
-        if (config.noSameIP) {
-            for (const client of wss.clients) {
-                if (client.ip === info.req.socket.remoteAddress) {
-                    return false;
-                }
-            }
-        }
-        return wss.clients.size < config.maxConnections && info.secure;
-    }
+    maxPayload: config.maxPayload
 });
 
 function debug(...args) {
@@ -40,6 +31,23 @@ function debug(...args) {
 wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress;
     ws.ip = ip;
+
+    if (config.noSameIP) {
+        for (const client of wss.clients) {
+            if ((ws !== client) && (client.ip === req.socket.remoteAddress)) {
+                debug("Client rejected because IP is already in use.");
+                ws.close(1002, "IP already in use.");
+                return;
+            }
+        }
+    }
+
+    if(wss.clients.size > config.maxConnections) {
+        debug("Client rejected because max number of connections was exceeded.");
+        ws.close(1002, "Max number of connections was exceeded.");
+        return;
+    }
+
     debug("Client connected.");
 
     ws.onclose = function (closeEvent) {
@@ -57,13 +65,13 @@ wss.on('connection', (ws, req) => {
 
     ws.onmessage = function ({ data }) {
         if (typeof data !== 'string') {
-            ws.close(1003, "Data type must be of type: 'string'.");
+            ws.close(1007, "Data type must be of type: 'string'.");
             return;
         }
         try {
             var parsed = JSON.parse(String(data));
         } catch (err) {
-            ws.close(1002, "Invalid JSON!");
+            ws.close(1007, "Invalid JSON!");
             return;
         }
         switch (String(parsed.type)) {
@@ -147,6 +155,6 @@ wss.on('connection', (ws, req) => {
     }
 });
 
-server.listen(8000, () => {
+server.listen(config.port, () => {
     debug("Server up and running!");
 });
