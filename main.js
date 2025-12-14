@@ -3,7 +3,7 @@ const WebSocket = require("ws");
 const http = require("http");
 const https = require("https");
 const { readFileSync } = require("fs");
-const { createHash } = require('crypto');
+const crypto = require('crypto');
 
 const config = require("./config.json");
 
@@ -12,12 +12,10 @@ function callBack(req, res) {
     res.end(readFileSync(config.client, { encoding: 'utf-8' }));
 }
 
-const serveerSSLSettings = {
+const server = config.useHTTPS ? (https.createServer({
     key: readFileSync(config.keyDir),
     cert: readFileSync(config.certDir)
-};
-
-const server = config.useHTTPS ? (https.createServer(serveerSSLSettings, callBack)) : (http.createServer(callBack));
+}, callBack)) : (http.createServer(callBack));
 
 const wss = new WebSocket.Server({
     server,
@@ -25,7 +23,7 @@ const wss = new WebSocket.Server({
 });
 
 function debug(...args) {
-    if (config.logDebug) console.log(...args);
+    if (config.logDebug) console.log("DEBUG::", ...args);
 }
 
 wss.on('connection', (ws, req) => {
@@ -42,7 +40,7 @@ wss.on('connection', (ws, req) => {
         }
     }
 
-    if(wss.clients.size > config.maxConnections) {
+    if (wss.clients.size > config.maxConnections) {
         debug("Client rejected because max number of connections was exceeded.");
         ws.close(1002, "Max number of connections was exceeded.");
         return;
@@ -56,8 +54,7 @@ wss.on('connection', (ws, req) => {
         wss.clients.forEach((client) => {
             if (client !== ws) {
                 client.send(JSON.stringify({
-                    type: 'anotherDisconnected',
-                    ip
+                    type: 'anotherDisconnected'
                 }));
             }
         });
@@ -65,58 +62,71 @@ wss.on('connection', (ws, req) => {
 
     ws.onmessage = function ({ data }) {
         if (typeof data !== 'string') {
-            ws.close(1007, "Data type must be of type: 'string'.");
+            ws.close(1007, "Data must be of type string.");
             return;
         }
+
+        let parsed;
         try {
-            var parsed = JSON.parse(String(data));
+            parsed = JSON.parse(String(data));
         } catch (err) {
-            ws.close(1007, "Invalid JSON!");
+            ws.close(1007, "Invalid JSON.");
             return;
         }
         switch (String(parsed.type)) {
             case 'init':
                 {
-                    if (ws.verified || (createHash("sha512").update(String(parsed.password) + config.salt).digest('hex') !== config.hashedPassword)) {
+                    const hashedAttempt = crypto.pbkdf2Sync(
+                        parsed.password,
+                        config.salt,
+                        config.iterations,
+                        config.keylen,
+                        config.digest
+                    ).toString('hex');
+
+                    if (ws.verified || hashedAttempt !== config.hashedPassword) {
                         ws.close(1002, "Incorrect verification.");
                         return;
                     }
+
                     debug("Client verified: " + ip);
                     ws.verified = true;
+
                     ws.send(JSON.stringify({
                         type: 'accepted'
                     }));
+
                     wss.clients.forEach((client) => {
                         if (client !== ws) {
                             client.send(JSON.stringify({
-                                type: 'anotherConnected',
-                                ip
+                                type: 'anotherConnected'
                             }));
                         } else {
                             client.send(JSON.stringify({
                                 type: 'connectedUsers',
-                                userAmount: wss.clients.size,
-                                ip
+                                userAmount: wss.clients.size
                             }));
                         }
                     });
+
                     break;
                 }
             case 'message':
                 {
-                    let msg = String(parsed.content).trim().slice(0, 0xffff);
+                    const msg = String(parsed.content).trim().slice(0, 0xffff);
+
                     if (msg !== "") {
                         wss.clients.forEach((client) => {
                             if (client.verified) {
                                 client.send(JSON.stringify({
                                     type: 'broadcast',
                                     content: msg,
-                                    you: client === ws,
-                                    senderIP: ip
+                                    you: client === ws
                                 }));
                             }
                         });
                     }
+
                     break;
                 }
             case 'file':
@@ -124,6 +134,7 @@ wss.on('connection', (ws, req) => {
                     parsed.content = String(parsed.content);
                     parsed.isImg = Boolean(parsed.isImg);
                     parsed.fileName = String(parsed.fileName);
+
                     if (parsed.content && (parsed.isImg || parsed.fileName)) {
                         wss.clients.forEach((client) => {
                             if (client.verified) {
@@ -132,18 +143,12 @@ wss.on('connection', (ws, req) => {
                                     content: parsed.content,
                                     fileName: parsed.fileName,
                                     you: client === ws,
-                                    senderIP: ip,
                                     isImg: parsed.isImg
                                 }));
                             }
                         });
                     }
-                    break;
-                }
-            case 'complaint':
-                {
-                    const complaint = config.complaints[Number(a)];
-                    debug(`Client has a complaint: ${complaint}\nComplaint message: ${String(parsed.message)}`);
+
                     break;
                 }
             default:

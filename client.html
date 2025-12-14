@@ -20,7 +20,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        #status {
+        #statusTxt {
             margin-bottom: 20px;
         }
 
@@ -42,7 +42,7 @@
             white-space: pre-wrap;
         }
 
-        #sendMessageBtn,
+        #sendBtn,
         #sendFileBtn {
             padding: 10px 20px;
             cursor: pointer;
@@ -85,7 +85,7 @@
                 font-size: 24px;
             }
 
-            #sendMessageBtn,
+            #sendBtn,
             #sendFileBtn {
                 padding: 20px;
                 font-size: 26px;
@@ -102,9 +102,9 @@
 
 <body>
     <div class="container">
-        <p id="status">Status: Didn't attempt connection.</p>
+        <p id="statusTxt">Status: Didn't attempt connection.</p>
         <textarea id="messageInput" placeholder="Type a message..."></textarea>
-        <button id="sendMessageBtn">Send</button>
+        <button id="sendBtn">Send</button>
         <button id="sendFileBtn">Send File</button>
         <input type="file" id="fileInput" style="display: none;">
         <div id="chatMessages"></div>
@@ -123,9 +123,9 @@
     </div>
 
     <script>
-        const sendBtn = document.getElementById("sendMessageBtn");
-        const statusTxt = document.getElementById("status");
-        const msgInput = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const statusTxt = document.getElementById("statusTxt");
+        const messageInput = document.getElementById("messageInput");
         const chatMessages = document.getElementById("chatMessages");
         const fileInput = document.getElementById("fileInput");
         const sendFileBtn = document.getElementById("sendFileBtn");
@@ -165,17 +165,17 @@
                     case 'broadcast':
                         {
                             let person = (parsed.you ? "You" : "Unknown");
-                            receiveMessage(`${person} (${parsed.senderIP}): ${parsed.content}`);
+                            receiveMessage(`${person}: ${parsed.content}`);
                             break;
                         }
                     case 'anotherConnected':
                         {
-                            receiveMessage(`Unknown (${parsed.ip}) joined the chat!`);
+                            receiveMessage(`Unknown has joined the chat.`);
                             break;
                         }
                     case 'anotherDisconnected':
                         {
-                            receiveMessage(`Unknown (${parsed.ip}) left the chat.`);
+                            receiveMessage(`Unknown has left the chat.`);
                             break;
                         }
                     case 'file':
@@ -187,7 +187,7 @@
                                 img.src = parsed.content;
                                 img.style.maxWidth = "100%";
                                 img.style.height = "auto";
-                                newMsg.appendChild(document.createTextNode(`${person} (${parsed.senderIP}): `));
+                                newMsg.appendChild(document.createTextNode(`${person}: `));
                                 newMsg.appendChild(img);
                             } else {
                                 let fileNameLink = document.createElement("span");
@@ -198,7 +198,7 @@
                                 fileNameLink.onclick = function () {
                                     downloadFile(parsed.content, parsed.fileName);
                                 };
-                                newMsg.appendChild(document.createTextNode(`${person} (${parsed.senderIP}): `));
+                                newMsg.appendChild(document.createTextNode(`${person}: `));
                                 newMsg.appendChild(fileNameLink);
                             }
                             chatMessages.appendChild(newMsg);
@@ -206,13 +206,12 @@
                         }
                     case 'connectedUsers':
                         {
-                            receiveMessage(`Welcome!\nNumber of connected users: ${parsed.userAmount}\nYour IP address: ${parsed.ip}`);
+                            receiveMessage(`Welcome!\nNumber of connected users: ${parsed.userAmount}`);
                             break;
                         }
                     default:
                         {
                             console.warn("Unknown packet type:", parsed.type);
-                            complainToServer(0, parsed.type);
                             break;
                         }
                 }
@@ -229,17 +228,17 @@
         }, 100);
 
         sendBtn.addEventListener("click", () => {
-            window.sendMessage(msgInput.value);
-            msgInput.value = "";
+            window.sendMessage(messageInput.value);
+            messageInput.value = "";
         });
 
-        msgInput.addEventListener("keydown", function (event) {
+        messageInput.addEventListener("keydown", function (event) {
             if (event.key === "Enter") {
                 if (event.shiftKey) {
-                    let cursorPosition = msgInput.selectionStart;
-                    let currentValue = msgInput.value;
-                    msgInput.value = currentValue.substring(0, cursorPosition) + '\n' + currentValue.substring(cursorPosition);
-                    msgInput.selectionStart = msgInput.selectionEnd = cursorPosition + 1;
+                    let cursorPosition = messageInput.selectionStart;
+                    let currentValue = messageInput.value;
+                    messageInput.value = currentValue.substring(0, cursorPosition) + '\n' + currentValue.substring(cursorPosition);
+                    messageInput.selectionStart = messageInput.selectionEnd = cursorPosition + 1;
                 } else {
                     sendBtn.click();
                 }
@@ -257,7 +256,7 @@
             }
         });
 
-        msgInput.addEventListener('paste', function (event) {
+        messageInput.addEventListener('paste', function (event) {
             let items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
             for (let item of items) {
@@ -342,17 +341,6 @@
             newMsg.textContent = msg;
             chatMessages.append(newMsg);
         }
-
-        function complainToServer(complain, message) {
-            if (ws.readyState === WebSocket.OPEN && ws.accepted) {
-                ws.send(JSON.stringify({
-                    type: 'complaint',
-                    complain: Number(complain),
-                    message: String(message)
-                }));
-            }
-        }
-
     </script>
 </body>
 

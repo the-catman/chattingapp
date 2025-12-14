@@ -1,16 +1,16 @@
 {
-	"hashedPassword": "e2710093356035b755593efe5311f618f25bd4818d6086506262769ae8c2ad6a8ae02f402152a2ee8d757a02e4a06c8546ed223b495fc7d7a5e3d419479661c1",
-	"salt": "pbR3eyBnykGUm6eeVnXxX1icKlcl4segI54z3WtoMJvbjGAC2Wdq3TQndHvCIoEnsyjvS0zVWRIIVaxsz0qlUxHlqvqcLXCvUprbdkR1lvEfhItfOchf5MOtVAluwFfwcu5Jz0DaYyDQNFWAVpNsOI44j2qClI3i",
+	"hashedPassword": "563cc9a1a400ef59b427335a0d6f4c5a404e2e117257a56f210bbba672b05bac5947269a1f95db1861a86339fa3bea87e940db779d8513b8e7c520bd0c168a1a",
+	"salt": "cda5cfd8f075b1943ec46d7a17a7319f",
+	"maxPayload": 100000000,
+	"iterations": 100000,
+	"keylen": 64,
+	"digest": "sha3-256",
 	"logDebug": true,
 	"noSameIP": true,
 	"maxConnections": 2,
-	"complaints": [
-		"The packet type it received was unknown!"
-	],
-	"keyDir": "../httpsserver/privkey.pem",
-	"certDir": "../httpsserver/fullchain.pem",
+	"keyDir": "",
+	"certDir": "",
 	"client": "./client.html",
-	"useHTTPS": true,
-	"port": 8000,
-	"maxPayload": 100000000
+	"useHTTPS": false,
+	"port": 8080
 }
