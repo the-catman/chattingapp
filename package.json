@@ -1,22 +1,4 @@
 {
-    "name": "chattingapp",
-    "version": "1.0.0",
-    "main": "main.js",
-    "scripts": {
-        "server": "node main",
-        "password": "node password"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/the-catman/chattingapp.git"
-    },
-    "author": "the-catman",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/the-catman/chattingapp/issues"
-    },
-    "homepage": "https://github.com/the-catman/chattingapp#readme",
-    "description": "Simple echo chatting app. The client frontend is desgined by ChatGPT.",
     "dependencies": {
         "ws": "^8.17.0"
     }

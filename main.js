@@ -57,42 +57,31 @@ const server = https.createServer({
 
 const wss = new WebSocket.Server({
     server,
-    maxPayload: config.maxPayload
-});
-
-wss.on("connection", (ws, req) => {
-    const ip = req.socket.remoteAddress;
-    ws.ip = ip;
-
-    if (config.noSameIP) {
-        for (const client of wss.clients) {
-            if ((ws !== client) && (client.ip === req.socket.remoteAddress)) {
-                debug("Client rejected because IP is already in use.");
-                ws.close(1002, "IP already in use.");
-                return;
-            }
+    maxPayload: config.maxPayload,
+    verifyClient: (info, done) => {
+        if (wss.clients.size >= 2) {
+            done(false);
+        } else {
+            done(true);
         }
     }
+});
 
-    if (wss.clients.size > config.maxConnections) {
-        debug("Client rejected because max number of connections was exceeded.");
-        ws.close(1002, "Max number of connections was exceeded.");
-        return;
-    }
+const cachedPackets = [
+    new OAB.Writer().string("connected").out(),
+    new OAB.Writer().string("disconnected").out()
+];
 
+wss.on("connection", (ws, req) => {
     debug("Client connected.");
 
     wss.clients.forEach((client) => {
         if (client !== ws) {
-            client.send(
-                new OAB.Writer()
-                    .string("anotherConnected")
-                    .out()
-            );
+            client.send(cachedPackets[0]);
         } else {
             client.send(
                 new OAB.Writer()
-                    .string("connectedUsers")
+                    .string("users")
                     .vu(wss.clients.size)
                     .out()
             );
@@ -104,11 +93,7 @@ wss.on("connection", (ws, req) => {
 
         wss.clients.forEach((client) => {
             if (client !== ws) {
-                client.send(
-                    new OAB.Writer()
-                        .string("anotherDisconnected")
-                        .out()
-                );
+                client.send(cachedPackets[1]);
             }
         });
     }
@@ -116,7 +101,7 @@ wss.on("connection", (ws, req) => {
     ws.onmessage = function (message) {
         const data = new Uint8Array(message.data)
         const reader = new OAB.Reader(data);
-        
+
         try {
             const packetType = reader.string();
             switch (packetType) {
@@ -158,6 +143,7 @@ wss.on("connection", (ws, req) => {
                                     .out()
                             );
                         });
+
                         break;
                     }
 

@@ -43,19 +43,19 @@ setTimeout(async function connect() {
         const packetType = reader.string();
 
         switch (packetType) {
-            case "anotherConnected":
+            case "connected":
                 {
                     receiveMessage("Unknown has joined the chat.");
                     break;
                 }
 
-            case "anotherDisconnected":
+            case "disconnected":
                 {
                     receiveMessage("Unknown has left the chat.");
                     break;
                 }
 
-            case "connectedUsers":
+            case "users":
                 {
                     receiveMessage(`Number of connected users: ${reader.vu()}`);
                     break;
