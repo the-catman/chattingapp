@@ -12,10 +12,6 @@ npm install
 
 Refer to [config.json](./config.json) for configuration.
 
-## License
-
-This code is Licensed under the MIT license.
-
 ## Extra info
 
 Pull requests are welcome.
