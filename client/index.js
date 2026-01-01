@@ -15,6 +15,8 @@ passwordNotice.style.display = "block";
 
 const salt = "e2ee-chat-v2";
 
+const notifySound = new Audio("/notification.mp3");
+
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -63,7 +65,8 @@ setTimeout(async function connect() {
 
             case "message":
                 {
-                    const person = reader.byte() ? "You" : "Unknown";
+                    const isYou = reader.byte();
+                    const person = isYou ? "You" : "Unknown";
                     const cipherText = reader.bytes().buffer;
                     const iv = reader.bytes().buffer;
 
@@ -73,7 +76,7 @@ setTimeout(async function connect() {
                             passwordKey,
                             cipherText
                         );
-                        receiveMessage(`${person}: ${dec.decode(decrypted)}`);
+                        receiveMessage(`${person}: ${dec.decode(decrypted)}`, isYou);
                     } catch (err) {
                         console.warn("Failed to decrypt message:", err);
                         receiveMessage("Could not decrypt a message (wrong password or corrupted data).");
@@ -84,7 +87,8 @@ setTimeout(async function connect() {
 
             case "file":
                 {
-                    const person = reader.byte() ? "You" : "Unknown";
+                    const isYou = reader.byte();
+                    const person = isYou ? "You" : "Unknown";
                     const isImg = reader.byte();
                     const fileName = reader.string();
                     const cipherText = reader.bytes().buffer;
@@ -125,7 +129,7 @@ setTimeout(async function connect() {
                         newMsg.textContent = "Could not decrypt a file (wrong password or corrupted data).";
                     }
 
-                    chatMessages.appendChild(newMsg);
+                    recv(newMsg, isYou);
                     break;
                 }
 
@@ -264,10 +268,20 @@ function downloadFile(fileContent, fileName) {
     document.body.removeChild(element);
 }
 
-function receiveMessage(msg) {
+function receiveMessage(msg, isYou = false) {
     let newMsg = document.createElement("p");
     newMsg.textContent = msg;
-    chatMessages.append(newMsg);
+    recv(newMsg, isYou);
+}
+
+function recv(element, isYou = false) {
+    const shouldScroll = isNearBottom();
+    chatMessages.append(element);
+    if (shouldScroll) scrollToBottom();
+    if(!document.hasFocus() && !isYou) {
+        const sound = notifySound.cloneNode();
+        sound.play().catch(console.warn);
+    }
 }
 
 async function deriveKey(password, salt) {
@@ -311,3 +325,16 @@ async function sendMessage(message) {
         );
     }
 }
+
+function isNearBottom(threshold = 50) {
+    return (
+        chatMessages.scrollHeight -
+        chatMessages.scrollTop -
+        chatMessages.clientHeight
+    ) < threshold;
+}
+
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+

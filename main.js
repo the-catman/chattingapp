@@ -26,6 +26,11 @@ function callBack(req, res) {
             contentType = "text/css";
             break;
 
+        case "/notification.mp3":
+            filePath = path.join(__dirname, "client", "notification.mp3");
+            contentType = "audio/mpeg";
+            break;
+
         default:
             filePath = "./client.html";
             contentType = "text/html";
@@ -33,7 +38,10 @@ function callBack(req, res) {
     }
 
     try {
-        const data = readFileSync(filePath, "utf-8");
+        const data = (contentType.startsWith("text/") || contentType === "application/javascript")
+            ? readFileSync(filePath, "utf-8")
+            : readFileSync(filePath);
+
         res.writeHead(200, { "Content-Type": contentType });
         res.end(data);
     } catch (err) {
