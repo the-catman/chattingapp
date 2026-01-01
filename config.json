@@ -1,10 +1,10 @@
 {
 	"maxPayload": 10000000,
 	"logDebug": true,
+	"logError": true,
 	"noSameIP": false,
 	"maxConnections": 2,
 	"keyDir": "../certs/cwtserver.zapto.org-key.pem",
 	"certDir": "../certs/cwtserver.zapto.org-crt.pem",
-	"client": "./client.html",
 	"port": 8000
 }
