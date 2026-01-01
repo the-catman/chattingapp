@@ -1,16 +1,10 @@
 {
-	"hashedPassword": "563cc9a1a400ef59b427335a0d6f4c5a404e2e117257a56f210bbba672b05bac5947269a1f95db1861a86339fa3bea87e940db779d8513b8e7c520bd0c168a1a",
-	"salt": "cda5cfd8f075b1943ec46d7a17a7319f",
-	"maxPayload": 100000000,
-	"iterations": 100000,
-	"keylen": 64,
-	"digest": "sha3-256",
+	"maxPayload": 10000000,
 	"logDebug": true,
-	"noSameIP": true,
+	"noSameIP": false,
 	"maxConnections": 2,
-	"keyDir": "",
-	"certDir": "",
+	"keyDir": "../certs/cwtserver.zapto.org-key.pem",
+	"certDir": "../certs/cwtserver.zapto.org-crt.pem",
 	"client": "./client.html",
-	"useHTTPS": false,
-	"port": 8080
+	"port": 8000
 }

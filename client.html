@@ -73,6 +73,44 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         }
 
+        #passwordContainer {
+            max-width: 400px;
+            margin: 0 auto 30px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        #passwordContainer input {
+            width: 70%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        #passwordContainer button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(to right, #007bff, #00c3ff);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+        }
+
+        #passwordNotice {
+            text-align: center;
+            color: #d32f2f;
+            font-size: 14px;
+        }
+
         @media only screen and (max-width: 600px) {
             .container {
                 margin: 5px;
@@ -96,11 +134,30 @@
                 padding: 20px;
                 font-size: 26px;
             }
+
+            #passwordContainer {
+                max-width: 90%;
+                padding: 15px;
+            }
+
+            #passwordContainer input {
+                width: 100%;
+                font-size: 18px;
+            }
+
+            #passwordContainer button {
+                width: 100%;
+                font-size: 18px;
+            }
         }
     </style>
 </head>
 
 <body>
+    <p id="passwordNotice" style="color: #ff0000; margin-bottom: 10px; display: none;">
+        You must first set a password
+    </p>
+
     <div class="container">
         <p id="statusTxt">Status: Didn't attempt connection.</p>
         <textarea id="messageInput" placeholder="Type a message..."></textarea>
@@ -108,6 +165,11 @@
         <button id="sendFileBtn">Send File</button>
         <input type="file" id="fileInput" style="display: none;">
         <div id="chatMessages"></div>
+    </div>
+
+    <div id="passwordContainer">
+        <input type="password" id="passwordInput" placeholder="Enter password...">
+        <button id="setPasswordBtn">Set Password</button>
     </div>
 
     <div id="imageConfirmationModal"
@@ -129,86 +191,120 @@
         const chatMessages = document.getElementById("chatMessages");
         const fileInput = document.getElementById("fileInput");
         const sendFileBtn = document.getElementById("sendFileBtn");
+        const setPasswordBtn = document.getElementById("setPasswordBtn");
+        const passwordInput = document.getElementById("passwordInput");
+        const passwordNotice = document.getElementById("passwordNotice");
 
-        let ws;
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        sendFileBtn.disabled = true;
+        passwordNotice.style.display = "block";
 
-        setTimeout(function connect() {
-            const password = prompt("Input your password:");
+        const salt = "e2ee-chat-v1";
 
-            if (password === null) {
-                alert("Cancelled.");
-                document.write("");
-                return;
-            }
+        const enc = new TextEncoder();
+        const dec = new TextDecoder();
 
+        let ws, passwordKey;
+
+        // # ---- MAIN LOOP ---- #
+
+        setTimeout(async function connect() {
             ws = new WebSocket(window.location.protocol.replace("http", "ws") + "//" + location.host);
-            statusTxt.textContent = 'Status: Attempting connection...';
+            statusTxt.textContent = "Status: Attempting connection...";
 
             ws.onclose = function (closeEvent) {
-                statusTxt.textContent = 'Status: Disconnected, reason: ' + (closeEvent.reason || "None.");
+                statusTxt.textContent = `Status: Disconnected, reason: ${(closeEvent.reason || "None.")}`;
                 console.log(closeEvent);
                 setTimeout(connect, 5000);
             }
 
             ws.onerror = function (errorEvent) {
-                statusTxt.textContent = 'Status: Errored.';
+                statusTxt.textContent = "Status: Errored.";
             }
 
-            ws.onmessage = function ({ data }) {
+            ws.onmessage = async function ({ data }) {
                 let parsed = JSON.parse(data);
+
                 switch (parsed.type) {
-                    case 'accepted':
+                    case "broadcast":
                         {
-                            ws.accepted = true;
-                            break;
-                        }
-                    case 'broadcast':
-                        {
-                            let person = (parsed.you ? "You" : "Unknown");
-                            receiveMessage(`${person}: ${parsed.content}`);
-                            break;
-                        }
-                    case 'anotherConnected':
-                        {
-                            receiveMessage(`Unknown has joined the chat.`);
-                            break;
-                        }
-                    case 'anotherDisconnected':
-                        {
-                            receiveMessage(`Unknown has left the chat.`);
-                            break;
-                        }
-                    case 'file':
-                        {
-                            let person = (parsed.you ? "You" : "Unknown");
-                            let newMsg = document.createElement("p");
-                            if (parsed.isImg) {
-                                let img = document.createElement("img");
-                                img.src = parsed.content;
-                                img.style.maxWidth = "100%";
-                                img.style.height = "auto";
-                                newMsg.appendChild(document.createTextNode(`${person}: `));
-                                newMsg.appendChild(img);
-                            } else {
-                                let fileNameLink = document.createElement("span");
-                                fileNameLink.textContent = parsed.fileName;
-                                fileNameLink.style.color = "#007bff";
-                                fileNameLink.style.textDecoration = "underline";
-                                fileNameLink.style.cursor = "pointer";
-                                fileNameLink.onclick = function () {
-                                    downloadFile(parsed.content, parsed.fileName);
-                                };
-                                newMsg.appendChild(document.createTextNode(`${person}: `));
-                                newMsg.appendChild(fileNameLink);
+                            try {
+                                const decrypted = await crypto.subtle.decrypt(
+                                    { name: "AES-GCM", iv: base64ToArrayBuffer(parsed.iv) },
+                                    passwordKey,
+                                    base64ToArrayBuffer(parsed.content)
+                                );
+                                let person = parsed.you ? "You" : "Unknown";
+                                receiveMessage(`${person}: ${dec.decode(decrypted)}`);
+                            } catch (err) {
+                                console.warn("Failed to decrypt message:", err);
+                                receiveMessage("Could not decrypt a message (wrong password or corrupted data).");
                             }
-                            chatMessages.appendChild(newMsg);
+
                             break;
                         }
-                    case 'connectedUsers':
+
+                    case "anotherConnected":
+                        {
+                            receiveMessage("Unknown has joined the chat.");
+                            break;
+                        }
+
+                    case "anotherDisconnected":
+                        {
+                            receiveMessage("Unknown has left the chat.");
+                            break;
+                        }
+
+                    case "connectedUsers":
                         {
                             receiveMessage(`Welcome!\nNumber of connected users: ${parsed.userAmount}`);
                             break;
                         }
+
+                    case "file":
+                        {
+                            const person = parsed.you ? "You" : "Unknown";
+                            let newMsg = document.createElement("p");
+
+                            try {
+                                const decryptedBuffer = await crypto.subtle.decrypt(
+                                    { name: "AES-GCM", iv: base64ToArrayBuffer(parsed.iv) },
+                                    passwordKey,
+                                    base64ToArrayBuffer(parsed.content)
+                                );
+
+                                if (parsed.isImg) {
+                                    const blob = new Blob([decryptedBuffer]);
+                                    const url = URL.createObjectURL(blob);
+                                    const img = document.createElement("img");
+                                    img.src = url;
+                                    img.style.maxWidth = "100%";
+                                    img.style.height = "auto";
+                                    newMsg.appendChild(document.createTextNode(`${person}: `));
+                                    newMsg.appendChild(img);
+                                } else {
+                                    const blob = new Blob([decryptedBuffer]);
+                                    const url = URL.createObjectURL(blob);
+                                    const fileLink = document.createElement("a");
+                                    fileLink.href = url;
+                                    fileLink.download = parsed.fileName;
+                                    fileLink.textContent = parsed.fileName;
+                                    fileLink.style.color = "#007bff";
+                                    fileLink.style.textDecoration = "underline";
+                                    newMsg.appendChild(document.createTextNode(`${person}: `));
+                                    newMsg.appendChild(fileLink);
+                                }
+                            } catch (err) {
+                                console.warn("Failed to decrypt file:", err);
+                                newMsg.textContent = "Could not decrypt a file (wrong password or corrupted data).";
+                            }
+
+                            chatMessages.appendChild(newMsg);
+                            break;
+                        }
+
                     default:
                         {
                             console.warn("Unknown packet type:", parsed.type);
@@ -218,14 +314,12 @@
             }
 
             ws.onopen = function (openEvent) {
-                statusTxt.textContent = 'Status: Connected.';
-                ws.send(JSON.stringify({
-                    type: "init",
-                    password: String(password)
-                }));
+                statusTxt.textContent = "Status: Connected.";
             }
 
         }, 100);
+
+        // # ---- HTML FUNCTIONS ---- #
 
         sendBtn.addEventListener("click", () => {
             window.sendMessage(messageInput.value);
@@ -256,16 +350,27 @@
             }
         });
 
-        messageInput.addEventListener('paste', function (event) {
+        messageInput.addEventListener("paste", function (event) {
             let items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
             for (let item of items) {
-                if (item.kind === 'file' && item.type.includes('image')) {
+                if (item.kind === "file" && item.type.includes("image")) {
                     let file = item.getAsFile();
                     displayImageConfirmation(file);
                 }
             }
         });
+
+        setPasswordBtn.addEventListener("click", async () => {
+            const password = passwordInput.value.trim();
+            passwordKey = await deriveKey(password, salt);
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            sendFileBtn.disabled = false;
+            passwordNotice.style.display = "none";
+        });
+
+        // # ---- HELPER FUNCTIONS ---- #
 
         function displayImageConfirmation(file) {
             let reader = new FileReader();
@@ -299,36 +404,33 @@
             }
         }
 
-        function sendFile(file, isImg = false) {
-            if (file && ws.readyState === WebSocket.OPEN && ws.accepted) {
-                let reader = new FileReader();
-                reader.onload = function (event) {
-                    ws.send(JSON.stringify({
-                        type: 'file',
-                        isImg,
-                        content: event.target.result,
-                        fileName: file.name
-                    }));
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+        async function sendFile(file, isImg = false) {
+            if (file && passwordKey && ws.readyState === WebSocket.OPEN) {
+                const fileBuffer = await file.arrayBuffer();
+                const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
 
-        function sendMessage(message) {
-            if (ws.readyState === WebSocket.OPEN && ws.accepted) {
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv },
+                    passwordKey,
+                    fileBuffer
+                );
+
                 ws.send(JSON.stringify({
-                    type: 'message',
-                    content: String(message)
+                    type: "file",
+                    isImg,
+                    content: arrayBufferToBase64(ciphertext),
+                    iv: arrayBufferToBase64(iv),
+                    fileName: file.name
                 }));
             }
         }
 
         function downloadFile(fileContent, fileName) {
-            let element = document.createElement('a');
-            element.setAttribute('href', fileContent);
-            element.setAttribute('download', fileName);
+            let element = document.createElement("a");
+            element.setAttribute("href", fileContent);
+            element.setAttribute("download", fileName);
 
-            element.style.display = 'none';
+            element.style.display = "none";
             document.body.appendChild(element);
 
             element.click();
@@ -340,6 +442,57 @@
             let newMsg = document.createElement("p");
             newMsg.textContent = msg;
             chatMessages.append(newMsg);
+        }
+
+        async function deriveKey(password, salt) {
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw",
+                enc.encode(password),
+                { name: "PBKDF2" },
+                false,
+                ["deriveKey"]
+            );
+
+            return crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: enc.encode(salt),
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        async function sendMessage(message) {
+            if (passwordKey && ws.readyState === WebSocket.OPEN && message.trim() !== "") {
+                const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for AES-GCM
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv },
+                    passwordKey,
+                    enc.encode(message)
+                );
+
+                ws.send(JSON.stringify({
+                    type: "message",
+                    content: arrayBufferToBase64(ciphertext),
+                    iv: arrayBufferToBase64(iv)
+                }));
+            }
+        }
+
+        function arrayBufferToBase64(buf) {
+            let binary = dec.decode(buf);
+            console.log(binary);
+            return btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binary = atob(base64);
+            return enc.encode(binary).buffer;
         }
     </script>
 </body>
