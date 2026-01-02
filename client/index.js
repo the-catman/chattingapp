@@ -337,4 +337,3 @@ function isNearBottom(threshold = 50) {
 function scrollToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
-
