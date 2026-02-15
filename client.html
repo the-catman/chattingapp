@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <p id="statusTxt">Status: Didn't attempt connection.</p>
+        <textarea id="messageInput" placeholder="Type a message..."></textarea>
+        <button id="sendBtn">Send</button>
+        <button id="sendFileBtn">Send File</button>
+        <input type="file" id="fileInput" style="display: none;">
+        <div id="chatMessages"></div>
+    </div>
+
+    <div id="imageConfirmationModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1;">
+        <div id="imageConfirmationContent"
+            style="background-color: #fff; max-width: 60%; margin: 20px auto; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: relative;">
+            <img id="imagePreview" style="max-width: 100%; height: auto; margin-bottom: 20px;">
+            <button id="confirmPasteBtn"
+                style="padding: 10px; cursor: pointer; background-color: #007bff; color: #fff; border: none; border-radius: 5px;">Confirm</button>
+            <button id="cancelPasteBtn"
+                style="padding: 10px; cursor: pointer; background-color: #007bff; color: #fff; border: none; border-radius: 5px; margin-left: 10px;">Cancel</button>
+        </div>
+    </div>
+
+    <script src="/OAB.js"></script>
+    <script src="/index.js"></script>
+</body>
+
+</html>

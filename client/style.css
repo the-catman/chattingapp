@@ -1,0 +1,93 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #e3f2fd;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#statusTxt {
+    margin-bottom: 20px;
+}
+
+#messageInput {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+#chatMessages {
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 50px;
+    white-space: pre-wrap;
+}
+
+#sendBtn,
+#sendFileBtn {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: linear-gradient(to right, #007bff, #00c3ff);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+}
+
+#imageConfirmationModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+#imageConfirmationContent {
+    background-color: #fff;
+    max-width: 70%;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+@media only screen and (max-width: 600px) {
+    .container {
+        margin: 5px;
+        padding: 20px;
+    }
+
+    #chatMessages {
+        max-height: 300px;
+        padding: 20px;
+        font-size: 24px;
+    }
+
+    #sendBtn,
+    #sendFileBtn {
+        padding: 20px;
+        font-size: 26px;
+    }
+
+    #imageConfirmationContent {
+        max-width: 90%;
+        padding: 20px;
+        font-size: 26px;
+    }
+}
