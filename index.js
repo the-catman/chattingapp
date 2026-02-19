@@ -1,5 +1,6 @@
 const WebSocket = require("ws");
 const https = require("https");
+const http = require("http");
 const { readFileSync } = require("fs");
 const path = require("node:path");
 const OAB = require("./lib/OAB.js");
@@ -58,10 +59,10 @@ function error(...args) {
     if (config.logErrors) console.log("ERROR::", ...args);
 }
 
-const server = https.createServer({
+const server = config.useHttps ? https.createServer({
     key: readFileSync(config.keyDir),
     cert: readFileSync(config.certDir)
-}, callBack);
+}, callBack) : http.createServer(callBack);
 
 const wss = new WebSocket.Server({
     server,

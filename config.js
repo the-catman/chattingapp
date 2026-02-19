@@ -5,5 +5,6 @@ fs.writeFileSync("config.json", `{
 	"logError": true,
 	"keyDir": "",
 	"certDir": "",
+	"useHttps": false,
 	"port": 8443
 }`);
