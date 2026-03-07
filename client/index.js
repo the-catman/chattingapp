@@ -1,9 +1,11 @@
 const sendBtn = document.getElementById("sendBtn");
 const statusTxt = document.getElementById("statusTxt");
+const statusDot = document.querySelector(".status-dot");
 const messageInput = document.getElementById("messageInput");
 const chatMessages = document.getElementById("chatMessages");
 const fileInput = document.getElementById("fileInput");
 const sendFileBtn = document.getElementById("sendFileBtn");
+const modal = document.getElementById("imageConfirmationModal");
 
 const notifySound = new Audio("./notification.mp3");
 
@@ -12,21 +14,29 @@ const dec = new TextDecoder();
 
 let ws;
 
+// # ---- STATUS HELPERS ---- #
+
+function setStatus(text, state) {
+    statusTxt.textContent = text;
+    statusDot.className = "status-dot";
+    if (state) statusDot.classList.add(state);
+}
+
 // # ---- MAIN LOOP ---- #
 
 setTimeout(async function connect() {
     ws = new WebSocket(window.location.protocol.replace("http", "ws") + "//" + location.host);
     ws.binaryType = "arraybuffer";
-    statusTxt.textContent = "Status: Attempting connection...";
+    setStatus("Connecting...", "");
 
     ws.onclose = function (closeEvent) {
-        statusTxt.textContent = `Status: Disconnected, reason: ${(closeEvent.reason || "None.")}`;
+        setStatus("Disconnected", "disconnected");
         console.log(closeEvent);
         setTimeout(connect, 5000);
     }
 
     ws.onerror = function () {
-        statusTxt.textContent = "Status: Errored.";
+        setStatus("Error", "disconnected");
     }
 
     ws.onmessage = async function (message) {
@@ -37,65 +47,39 @@ setTimeout(async function connect() {
         switch (packetType) {
             case "connected":
                 {
-                    receiveMessage("Unknown has joined the chat.");
+                    addSystemMessage("Someone joined the chat");
                     break;
                 }
 
             case "disconnected":
                 {
-                    receiveMessage("Unknown has left the chat.");
+                    addSystemMessage("Someone left the chat");
                     break;
                 }
 
             case "users":
                 {
-                    receiveMessage(`Number of connected users: ${reader.vu()}`);
+                    addSystemMessage(`${reader.vu()} user(s) connected`);
                     break;
                 }
 
             case "message":
                 {
                     const isYou = reader.byte();
-                    const person = isYou ? "You" : "Unknown";
                     const messageText = reader.string();
 
-                    receiveMessage(`${person}: ${messageText}`, isYou);
+                    addChatMessage(messageText, isYou);
                     break;
                 }
 
             case "file":
                 {
                     const isYou = reader.byte();
-                    const person = isYou ? "You" : "Unknown";
                     const isImg = reader.byte();
                     const fileName = reader.string();
                     const fileData = reader.bytes();
 
-                    let newMsg = document.createElement("p");
-
-                    if (isImg) {
-                        const blob = new Blob([fileData]);
-                        const url = URL.createObjectURL(blob);
-                        const img = document.createElement("img");
-                        img.src = url;
-                        img.style.maxWidth = "100%";
-                        img.style.height = "auto";
-                        newMsg.appendChild(document.createTextNode(`${person}: `));
-                        newMsg.appendChild(img);
-                    } else {
-                        const blob = new Blob([fileData]);
-                        const url = URL.createObjectURL(blob);
-                        const fileLink = document.createElement("a");
-                        fileLink.href = url;
-                        fileLink.download = fileName;
-                        fileLink.textContent = fileName;
-                        fileLink.style.color = "#007bff";
-                        fileLink.style.textDecoration = "underline";
-                        newMsg.appendChild(document.createTextNode(`${person}: `));
-                        newMsg.appendChild(fileLink);
-                    }
-
-                    recv(newMsg, isYou);
+                    addFileMessage(isYou, isImg, fileName, fileData);
                     break;
                 }
 
@@ -108,7 +92,7 @@ setTimeout(async function connect() {
     }
 
     ws.onopen = function () {
-        statusTxt.textContent = "Status: Connected.";
+        setStatus("Connected", "connected");
     }
 }, 100);
 
@@ -117,6 +101,7 @@ setTimeout(async function connect() {
 sendBtn.addEventListener("click", () => {
     window.sendMessage(messageInput.value);
     messageInput.value = "";
+    messageInput.style.height = "auto";
 });
 
 messageInput.addEventListener("keydown", function (event) {
@@ -131,6 +116,11 @@ messageInput.addEventListener("keydown", function (event) {
         }
         event.preventDefault();
     }
+});
+
+messageInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 120) + "px";
 });
 
 sendFileBtn.addEventListener("click", function () {
@@ -154,6 +144,45 @@ messageInput.addEventListener("paste", function (event) {
     }
 });
 
+// # ---- MESSAGE RENDERING ---- #
+
+function addSystemMessage(text) {
+    const el = document.createElement("div");
+    el.className = "message system";
+    el.textContent = text;
+    recv(el, false);
+}
+
+function addChatMessage(text, isYou) {
+    const el = document.createElement("div");
+    el.className = "message " + (isYou ? "you" : "other");
+    el.textContent = text;
+    recv(el, isYou);
+}
+
+function addFileMessage(isYou, isImg, fileName, fileData) {
+    const el = document.createElement("div");
+    el.className = "message " + (isYou ? "you" : "other");
+
+    if (isImg) {
+        const blob = new Blob([fileData]);
+        const url = URL.createObjectURL(blob);
+        const img = document.createElement("img");
+        img.src = url;
+        el.appendChild(img);
+    } else {
+        const blob = new Blob([fileData]);
+        const url = URL.createObjectURL(blob);
+        const fileLink = document.createElement("a");
+        fileLink.href = url;
+        fileLink.download = fileName;
+        fileLink.textContent = fileName;
+        el.appendChild(fileLink);
+    }
+
+    recv(el, isYou);
+}
+
 // # ---- HELPER FUNCTIONS ---- #
 
 function displayImageConfirmation(file) {
@@ -161,7 +190,7 @@ function displayImageConfirmation(file) {
 
     reader.onload = function (event) {
         document.getElementById("imagePreview").src = event.target.result;
-        document.getElementById("imageConfirmationModal").style.display = "block";
+        modal.classList.add("visible");
     };
 
     reader.readAsDataURL(file);
@@ -182,7 +211,7 @@ function displayImageConfirmation(file) {
     cancelPasteBtn.addEventListener("click", cancelAction);
 
     function hideConfirmationModal() {
-        document.getElementById("imageConfirmationModal").style.display = "none";
+        modal.classList.remove("visible");
         confirmPasteBtn.removeEventListener("click", confirmAction);
         cancelPasteBtn.removeEventListener("click", cancelAction);
     }
@@ -201,12 +230,6 @@ async function sendFile(file, isImg = false) {
                 .out()
         );
     }
-}
-
-function receiveMessage(msg, isYou = false) {
-    let newMsg = document.createElement("p");
-    newMsg.textContent = msg;
-    recv(newMsg, isYou);
 }
 
 function recv(element, isYou = false) {
